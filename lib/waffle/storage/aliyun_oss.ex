@@ -2,6 +2,7 @@ defmodule Waffle.Storage.AliyunOss do
   require Logger
 
   alias Waffle.Definition.Versioning
+  alias Aliyun.Oss.Object.MultipartUpload
 
   @default_expiry_time 60 * 5
 
@@ -9,16 +10,18 @@ defmodule Waffle.Storage.AliyunOss do
     destination_dir = definition.storage_dir(version, {file, scope})
     bucket = oss_bucket(definition)
     key = Path.join(destination_dir, file.file_name)
-    # TODO Access Control
-    # acl = definition.acl(version, {file, scope})
 
-    do_put(file, {bucket, key, []})
+    # TODO: Accept custom options
+    oss_options = []
+
+    do_put(file, {bucket, key, oss_options})
   end
 
   def url(definition, version, file_and_scope, options \\ []) do
-    case Keyword.get(options, :signed, false) do
-      false -> build_url(definition, version, file_and_scope, options)
-      true  -> build_signed_url(definition, version, file_and_scope, options)
+    if signed_url?(definition, version, file_and_scope, options) do
+      build_signed_url(definition, version, file_and_scope, options)
+    else
+      build_url(definition, version, file_and_scope, options)
     end
   end
 
@@ -42,13 +45,17 @@ defmodule Waffle.Storage.AliyunOss do
     end
   end
 
-  # TODO: Stream the file and upload to OSS as a multi-part upload
-  defp do_put(file, {_bucket, _key, _oss_options} = arg) do
-    do_put(%{file | binary: File.read!(file.path)}, arg)
+  @chunk_size 1 * 1024 * 1024
+  # Stream the file and upload to OSS as a multi-part upload
+  defp do_put(file, {bucket, key, _oss_options}) do
+    case MultipartUpload.upload(bucket, key, File.stream!(file.path, [], @chunk_size)) do
+      {:ok, _} -> {:ok, file.file_name}
+      {:error, error} -> {:error, error}
+    end
   end
 
-  defp build_url(definition, version, file_and_scope, options) do
-    build_signed_url(definition, version, file_and_scope, options)
+  defp build_url(definition, version, file_and_scope, _options) do
+    Path.join(host(definition), object_key(definition, version, file_and_scope))
   end
 
   defp build_signed_url(definition, version, file_and_scope, options) do
@@ -67,6 +74,11 @@ defmodule Waffle.Storage.AliyunOss do
     Aliyun.Oss.Object.object_url(bucket, key, expires)
   end
 
+  defp signed_url?(definition, version, file_and_scope, options) do
+    definition.acl(version, file_and_scope) not in [:public_read, :public_read_write] or
+      Keyword.get(options, :signed, false)
+  end
+
   defp object_key(definition, version, file_and_scope) do
     Path.join([
       definition.storage_dir(version, file_and_scope),
@@ -79,5 +91,28 @@ defmodule Waffle.Storage.AliyunOss do
       {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
       name -> name
     end
+  end
+
+  defp host(definition) do
+    case asset_host(definition) do
+      {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
+      url -> url
+    end
+  end
+
+  defp asset_host(definiton) do
+    case definiton.asset_host() do
+      false -> default_host(definiton)
+      nil -> default_host(definiton)
+      host -> host
+    end
+  end
+
+  defp default_host(definition) do
+    "https://#{oss_bucket(definition)}.#{endpoint()}"
+  end
+
+  defp endpoint do
+    Application.fetch_env!(:aliyun_oss, :endpoint)
   end
 end

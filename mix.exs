@@ -22,7 +22,7 @@ defmodule WaffleAliyunOss.MixProject do
   defp deps do
     [
       {:waffle, "~> 1.0"},
-      {:aliyun_oss, "~> 0.5.0"}
+      {:aliyun_oss, "~> 0.6.0"}
     ]
   end
 end
