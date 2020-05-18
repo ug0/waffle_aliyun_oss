@@ -7,6 +7,9 @@ defmodule WaffleAliyunOss.MixProject do
       version: "0.1.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
+      description: description(),
+      package: package(),
+      docs: docs(),
       deps: deps()
     ]
   end
@@ -22,7 +25,29 @@ defmodule WaffleAliyunOss.MixProject do
   defp deps do
     [
       {:waffle, "~> 1.0"},
-      {:aliyun_oss, "~> 0.6.0"}
+      {:aliyun_oss, "~> 0.6.0"},
+      {:ex_doc, "~> 0.20", only: :dev}
+    ]
+  end
+
+  defp description do
+    """
+    Aliyun OSS Storage for Waffle
+    """
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/ug0/waffle_aliyun_oss"},
+      source_urL: "https://github.com/ug0/waffle_aliyun_oss",
+      homapage_url: "https://github.com/ug0/waffle_aliyun_oss"
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Waffle.Storage.AliyunOss"
     ]
   end
 end
