@@ -70,6 +70,7 @@ defmodule Waffle.Storage.AliyunOss do
 
   alias Waffle.Definition.Versioning
   alias Aliyun.Oss.Object.MultipartUpload
+  alias WaffleAliyunOss.TaskSupervisor
 
   @default_expiry_time 60 * 5
 
@@ -119,7 +120,7 @@ defmodule Waffle.Storage.AliyunOss do
 
     case MultipartUpload.upload(bucket, key, File.stream!(file.path, [], @chunk_size)) do
       {:ok, _} ->
-        Task.start(fn -> put_object_acl(bucket, key, acl) end)
+        Task.Supervisor.start_child(TaskSupervisor, fn -> put_object_acl(bucket, key, acl) end)
         {:ok, file.file_name}
 
       {:error, error} ->
