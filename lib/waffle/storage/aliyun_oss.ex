@@ -130,7 +130,7 @@ defmodule Waffle.Storage.AliyunOss do
 
   defp put_object_acl(bucket, object, acl)
        when acl in [:private, :public, :public_read, :public_read_write] do
-    Aliyun.Oss.Object.put_object_acl(bucket, object, acl_to_header_str(acl))
+    Aliyun.Oss.Object.ACL.put(bucket, object, acl_to_header_str(acl))
   end
 
   defp req_headers(oss_options) do
