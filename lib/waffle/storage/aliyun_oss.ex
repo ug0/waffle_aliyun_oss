@@ -205,6 +205,9 @@ defmodule Waffle.Storage.AliyunOss do
   end
 
   defp endpoint do
-    Application.fetch_env!(:aliyun_oss, :endpoint)
+    case Application.fetch_env!(:aliyun_oss, :endpoint) do
+      {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
+      host -> host
+    end
   end
 end
