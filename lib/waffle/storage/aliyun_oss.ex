@@ -12,32 +12,31 @@ defmodule Waffle.Storage.AliyunOss do
 
   [Aliyun.Oss](https://github.com/ug0/aliyun_oss) is used to support Aliyun OSS.
 
-  To store your attachments in Aliyun OSS, you'll need to provide a
-  bucket destination in your application config:
+  To store your attachments in Aliyun OSS, you'll need to provide necessary
+  configs(bucket, endpoint, and credentials) in your application config:
 
       config :waffle,
-        bucket: "uploads"
+        bucket: "uploads",
+        endpoint: "some.endpoint.com",
+        access_key_id: "ALIYUN_ACCESS_KEY_ID",
+        access_key_secret: "ALIYUN_ACCESS_KEY_SECRET"
 
 
-  You may also set the bucket from an environment variable:
+  You may also set them from an environment variable:
 
       config :waffle,
-        bucket: {:system, "OSS_BUCKET"}
-
-  In addition, Aliyun.Oss must be configured with the appropriate Aliyun Oss
-  credentials:
-
-      config :aliyun_oss,
-        endpoint: {:system, "ALIYUN_ENDPOINT"},
+        bucket: {:system, "OSS_BUCKET"},
+        endpoint: {:system, "OSS_ENDPOINT"},
         access_key_id: {:system, "ALIYUN_ACCESS_KEY_ID"},
         access_key_secret: {:system, "ALIYUN_ACCESS_KEY_SECRET"}
 
-  ## Specify multiple buckets
+  You can set them in the uploader definition file to override
+  the global configurations like this:
+      def bucket, do: "some_custom_bucket_name"
+      def endpoint, do: "some_custom_endpoint"
+      def access_key_id, do: "your_aliyun_access_key_id"
+      def access_key_id, do: "your_aliyun_access_key_secret"
 
-  Waffle lets you specify a bucket on a per definition basis. In case
-  you want to use multiple buckets, you can specify a bucket in the
-  uploader definition file like this:
-      def bucket, do: :some_custom_bucket_name
 
   ## Access Control Permissions
 
@@ -82,7 +81,7 @@ defmodule Waffle.Storage.AliyunOss do
 
     oss_options = [acl: acl]
 
-    do_put(file, {bucket, key, oss_options})
+    do_put(file, {oss_config(definition), bucket, key, oss_options})
   end
 
   def url(definition, version, file_and_scope, options \\ []) do
@@ -94,8 +93,14 @@ defmodule Waffle.Storage.AliyunOss do
   end
 
   def delete(definition, version, {file, scope}) do
-    oss_bucket(definition)
-    |> Aliyun.Oss.Object.delete_object(object_key(definition, version, {file, scope}))
+    definition
+    |> oss_config()
+    |> Aliyun.Oss.Object.delete_object(
+      oss_bucket(definition),
+      object_key(definition,
+      version,
+      {file, scope})
+    )
 
     :ok
   end
@@ -105,8 +110,8 @@ defmodule Waffle.Storage.AliyunOss do
   #
 
   # If the file is stored as a binary in-memory, send to OSS in a single request
-  defp do_put(file = %Waffle.File{binary: file_binary}, {bucket, key, oss_options}) when is_binary(file_binary) do
-    Aliyun.Oss.Object.put_object(bucket, key, file_binary, req_headers(oss_options))
+  defp do_put(file = %Waffle.File{binary: file_binary}, {oss_config, bucket, key, oss_options}) when is_binary(file_binary) do
+    Aliyun.Oss.Object.put_object(oss_config, bucket, key, file_binary, req_headers(oss_options))
     |> case do
       {:ok, _res} -> {:ok, file.file_name}
       {:error, error} -> {:error, error}
@@ -115,12 +120,12 @@ defmodule Waffle.Storage.AliyunOss do
 
   @chunk_size 1 * 1024 * 1024
   # Stream the file and upload to OSS as a multi-part upload
-  defp do_put(file, {bucket, key, oss_options}) do
+  defp do_put(file, {oss_config, bucket, key, oss_options}) do
     acl = Keyword.get(oss_options, :acl)
 
-    case MultipartUpload.upload(bucket, key, File.stream!(file.path, [], @chunk_size)) do
+    case MultipartUpload.upload(oss_config, bucket, key, File.stream!(file.path, [], @chunk_size)) do
       {:ok, _} ->
-        Task.Supervisor.start_child(TaskSupervisor, fn -> put_object_acl(bucket, key, acl) end)
+        Task.Supervisor.start_child(TaskSupervisor, fn -> put_object_acl(oss_config, bucket, key, acl) end)
         {:ok, file.file_name}
 
       {:error, error} ->
@@ -128,9 +133,9 @@ defmodule Waffle.Storage.AliyunOss do
     end
   end
 
-  defp put_object_acl(bucket, object, acl)
+  defp put_object_acl(oss_config, bucket, object, acl)
        when acl in [:private, :public, :public_read, :public_read_write] do
-    Aliyun.Oss.Object.ACL.put(bucket, object, acl_to_header_str(acl))
+    Aliyun.Oss.Object.ACL.put(oss_config, bucket, object, acl_to_header_str(acl))
   end
 
   defp req_headers(oss_options) do
@@ -163,7 +168,7 @@ defmodule Waffle.Storage.AliyunOss do
     key = object_key(definition, version, file_and_scope)
     bucket = oss_bucket(definition)
 
-    Aliyun.Oss.Object.object_url(bucket, key, expires)
+    definition |> oss_config() |> Aliyun.Oss.Object.object_url(bucket, key, expires)
   end
 
   defp signed_url?(definition, version, file_and_scope, options) do
@@ -179,17 +184,13 @@ defmodule Waffle.Storage.AliyunOss do
   end
 
   defp oss_bucket(definition) do
-    case definition.bucket() do
-      {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
-      name -> name
-    end
+    get_direct_value_or_via_env(definition.bucket)
   end
 
   defp host(definition) do
-    case asset_host(definition) do
-      {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
-      url -> url
-    end
+    definition
+    |> asset_host()
+    |> get_direct_value_or_via_env()
   end
 
   defp asset_host(definiton) do
@@ -201,13 +202,31 @@ defmodule Waffle.Storage.AliyunOss do
   end
 
   defp default_host(definition) do
-    "https://#{oss_bucket(definition)}.#{endpoint()}"
+    "https://#{oss_bucket(definition)}.#{endpoint(definition)}"
   end
 
-  defp endpoint do
-    case Application.fetch_env!(:aliyun_oss, :endpoint) do
-      {:system, env_var} when is_binary(env_var) -> System.get_env(env_var)
-      host -> host
+  defp endpoint(definition) do
+    get_config_value(definition, :endpoint)
+  end
+
+  defp oss_config(definition) do
+    Aliyun.Oss.Config.new!(%{
+      endpoint: endpoint(definition),
+      access_key_id: get_config_value(definition, :access_key_id),
+      access_key_secret: get_config_value(definition, :access_key_secret)
+    })
+  end
+
+  defp get_config_value(definition, key) do
+    if function_exported?(definition, key, 0) do
+      apply(definition, key, [])
+    else
+      :waffle
+      |> Application.get_env(key)
+      |> get_direct_value_or_via_env()
     end
   end
+
+  defp get_direct_value_or_via_env({:system, key}), do: System.get_env(key)
+  defp get_direct_value_or_via_env(value), do: value
 end

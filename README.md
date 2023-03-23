@@ -10,7 +10,7 @@ by adding `waffle_aliyun_oss` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:waffle_aliyun_oss, "~> 0.2.1"}
+    {:waffle_aliyun_oss, "~> 0.3.0"}
   ]
 end
 ```
@@ -18,19 +18,19 @@ end
 ## Configration
 All configuration values are stored under the :waffle app key. E.g.
 ```elixir
-config :waffle, storage: Waffle.Storage.AliyunOss, bucket: "OSS-BUCKET",
+config :waffle,
+  storage: Waffle.Storage.AliyunOss,
+  bucket: "some-bucket",
+  endpoint: "some.endpoint.com",
+  access_key_id: "ALIYUN_ACCESS_KEY_ID",
+  access_key_secret: "ALIYUN_ACCESS_KEY_SECRET"
 ```
 You may also set the bucket from an environment variable:
 ```elixir
 config :waffle,
-  bucket: {:system, "OSS_BUCKET"}
-```
-
-In addition, Aliyun.Oss must be configured with the appropriate Aliyun Oss
-credentials:
-```elixir
-config :aliyun_oss,
-  endpoint: {:system, "ALIYUN_ENDPOINT"},
+  storage: Waffle.Storage.AliyunOss,
+  bucket: {:system, "OSS_BUCKET"},
+  endpoint: {:system, "OSS_ENDPOINT"},
   access_key_id: {:system, "ALIYUN_ACCESS_KEY_ID"},
   access_key_secret: {:system, "ALIYUN_ACCESS_KEY_SECRET"}
 ```
