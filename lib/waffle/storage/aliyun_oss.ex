@@ -111,7 +111,7 @@ defmodule Waffle.Storage.AliyunOss do
 
   # If the file is stored as a binary in-memory, send to OSS in a single request
   defp do_put(file = %Waffle.File{binary: file_binary}, {oss_config, bucket, key, oss_options}) when is_binary(file_binary) do
-    Aliyun.Oss.Object.put_object(oss_config, bucket, key, file_binary, req_headers(oss_options))
+    Aliyun.Oss.Object.put_object(oss_config, bucket, key, file_binary, headers: req_headers(oss_options))
     |> case do
       {:ok, _res} -> {:ok, file.file_name}
       {:error, error} -> {:error, error}
@@ -160,20 +160,14 @@ defmodule Waffle.Storage.AliyunOss do
     # fallback to default, if neither is present.
     expires_in = Keyword.get(options, :expires_in) || Keyword.get(options, :expires_at) || @default_expiry_time
 
-    expires =
-      DateTime.utc_now()
-      |> DateTime.to_unix()
-      |> Kernel.+(expires_in)
-
     key = object_key(definition, version, file_and_scope)
     bucket = oss_bucket(definition)
 
-    definition |> oss_config() |> Aliyun.Oss.Object.object_url(bucket, key, expires)
+    definition |> oss_config() |> Aliyun.Oss.Object.object_url(bucket, key, expires_in)
   end
 
   defp signed_url?(definition, version, file_and_scope, options) do
-    definition.acl(version, file_and_scope) not in [:public_read, :public_read_write] or
-      Keyword.get(options, :signed, false)
+    Keyword.get(options, :signed, false)
   end
 
   defp object_key(definition, version, file_and_scope) do
@@ -211,6 +205,7 @@ defmodule Waffle.Storage.AliyunOss do
 
   defp oss_config(definition) do
     Aliyun.Oss.Config.new!(%{
+      region: get_config_value(definition, :region),
       endpoint: endpoint(definition),
       access_key_id: get_config_value(definition, :access_key_id),
       access_key_secret: get_config_value(definition, :access_key_secret)

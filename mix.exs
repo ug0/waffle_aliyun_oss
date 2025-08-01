@@ -5,7 +5,7 @@ defmodule WaffleAliyunOss.MixProject do
     [
       app: :waffle_aliyun_oss,
       version: "0.3.0",
-      elixir: "~> 1.10",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
@@ -25,8 +25,8 @@ defmodule WaffleAliyunOss.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:waffle, "~> 1.0"},
-      {:aliyun_oss, "~> 2.0"},
+      {:waffle, "~> 1.1"},
+      {:aliyun_oss, "~> 3.1.0"},
       {:ex_doc, "~> 0.20", only: :dev}
     ]
   end
