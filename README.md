@@ -13,7 +13,7 @@ by adding `waffle_aliyun_oss` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:waffle_aliyun_oss, "~> 0.3.0"}
+    {:waffle_aliyun_oss, "~> 0.4.0"}
   ]
 end
 ```
