@@ -1,5 +1,8 @@
 # WaffleAliyunOss
 
+[![Publish](https://github.com/ug0/waffle_aliyun_oss/actions/workflows/publish.yml/badge.svg)](https://github.com/ug0/waffle_aliyun_oss/actions/workflows/publish.yml)
+[![Run Tests](https://github.com/ug0/waffle_aliyun_oss/actions/workflows/test.yml/badge.svg)](https://github.com/ug0/waffle_aliyun_oss/actions/workflows/test.yml)
+
 Aliyun OSS Storage for Waffle
 
 ## Installation
