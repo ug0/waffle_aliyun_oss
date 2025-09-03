@@ -166,7 +166,7 @@ defmodule Waffle.Storage.AliyunOss do
     definition |> oss_config() |> Aliyun.Oss.Object.object_url(bucket, key, expires_in)
   end
 
-  defp signed_url?(definition, version, file_and_scope, options) do
+  defp signed_url?(_definition, _version, _file_and_scope, options) do
     Keyword.get(options, :signed, false)
   end
 
