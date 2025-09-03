@@ -4,7 +4,7 @@ defmodule WaffleAliyunOss.MixProject do
   def project do
     [
       app: :waffle_aliyun_oss,
-      version: "0.4.0",
+      version: "0.4.1",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -26,7 +26,7 @@ defmodule WaffleAliyunOss.MixProject do
   defp deps do
     [
       {:waffle, "~> 1.1"},
-      {:aliyun_oss, "~> 3.1"},
+      {:aliyun_oss, "~> 3.2"},
       {:ex_doc, "~> 0.20", only: :dev}
     ]
   end
